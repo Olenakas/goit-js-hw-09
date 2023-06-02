@@ -9,9 +9,8 @@ const secondsField = document.querySelector('span[data-seconds]');
 
 const timerInput = document.querySelector('#datetime-picker');
 const startButton = document.querySelector('button[data-start]');
-startButton.disabled = true;
 
-let interval;
+let interval = null;
 
 const convertMs = ms => {
   const second = 1000;
@@ -30,48 +29,49 @@ const convertMs = ms => {
 const addLeadingZero = value => {
   return value.toString().padStart(2, '0');
 };
-
-const updateInterface = time => {
-  daysField.textContent = addLeadingZero(time.days);
-  hoursField.textContent = addLeadingZero(time.hours);
-  minutesField.textContent = addLeadingZero(time.minutes);
-  secondsField.textContent = addLeadingZero(time.seconds);
-};
-
 const startCountdown = () => {
-  const endDate = flatpickr.parseDate(timerInput.value);
-  interval = setInterval(updateCountdown, 1000);
+  const selectedDate = new Date(timerInput.value).getTime();
+  const currentDate = new Date().getTime();
+  let countdown = selectedDate - currentDate;
 
-  function updateCountdown() {
-    const currentDate = new Date();
-    const timeLeft = endDate - currentDate;
-
-    if (timeLeft <= 0) {
-      clearInterval(interval);
-      updateInterface(convertMs(0));
-      Notiflix.Notify.success('Countdown finished!');
-      startButton.disabled = true;
-    } else {
-      updateInterface(convertMs(timeLeft));
-    }
+  if (countdown <= 0) {
+    Notiflix.Notify.failure('Please choose a future date');
+    return;
   }
-};
 
-flatpickr(timerInput, {
+  clearInterval(interval);
+  interval = setInterval(() => {
+    if (countdown <= 0) {
+      clearInterval(interval);
+      timerInput.disabled = false;
+      return;
+    }
+
+    const remainingTime = convertMs(countdown);
+    daysField.textContent = addLeadingZero(remainingTime.days);
+    hoursField.textContent = addLeadingZero(remainingTime.hours);
+    minutesField.textContent = addLeadingZero(remainingTime.minutes);
+    secondsField.textContent = addLeadingZero(remainingTime.seconds);
+
+    countdown -= 1000;
+  }, 1000);
+
+  timerInput.disabled = true;
+};
+flatpickr('#datetime-picker', {
   enableTime: true,
   time_24hr: true,
   defaultDate: new Date(),
   minuteIncrement: 1,
   onClose(selectedDates) {
     const selectedDate = selectedDates[0];
-    const currentDate = new Date();
-
-    if (selectedDate <= currentDate) {
-      Notiflix.Notify.warning('Please choose a date in the future');
+    if (selectedDate <= new Date()) {
+      Notiflix.Notify.failure('Please choose a date in the future');
       startButton.disabled = true;
-    } else {
-      startButton.disabled = false;
+      return;
     }
+
+    startButton.disabled = false;
   },
 });
 
